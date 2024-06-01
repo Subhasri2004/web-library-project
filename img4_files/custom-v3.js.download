@@ -1,0 +1,352 @@
+// aos animation
+AOS.init({
+  duration: 1000
+});
+
+// mobile flag
+// change the value of mobile_conutry if change initialCountry
+$(".mob-number").intlTelInput({
+    initialCountry: "in",
+    separateDialCode: true,
+    // hiddenInput: "mobileNumber",
+});
+
+let inputs = document.querySelectorAll(".verification_code .otp_no");
+let values = Array(3);
+let clipData;
+// inputs[0].focus();
+inputs.forEach((tag, index) => {
+    tag.addEventListener('keyup', (event) => {
+        if(event.code === "Backspace" && hasNoValue(index)) {
+    if(index > 0) inputs[index - 1].focus();
+    }
+    //else if any input move focus to next or out
+    else if (tag.value !== "") {
+    (index < inputs.length - 1) ? inputs[index + 1].focus() : tag.blur();
+    }
+    //add val to array to track prev vals
+    values[index] = event.target.value;
+});
+tag.addEventListener('.otp_no', () => {
+    //replace digit if already exists
+    if(tag.value > 10) {
+    tag.value = tag.value % 10;
+    }
+});
+tag.addEventListener('paste', (event) => {
+    event.preventDefault();
+    clipData = event.clipboardData.getData("text/plain").split('');
+    filldata(index);
+    })
+})
+function filldata(index) {
+    for(let i = index; i < inputs.length; i++) {
+        inputs[i].value = clipData.shift();
+    }
+}
+function hasNoValue(index) {
+    if(values[index] || values[index] === 0)
+        return false;
+    return true;
+}
+let digitValidate = function(ele){
+ele.value = ele.value.replace(/[^0-9]/g,'');
+}
+
+let tabChange = function(val){
+let ele = document.querySelectorAll('.verification_code .otp_no');
+if(ele[val-1].value != ''){
+ele[val].focus()
+}else if(ele[val-1].value == ''){
+ele[val-2].focus()
+}   
+}
+$(document).ready(function(){
+    $("#register .check-policy").click(function(event) {
+        $("#register .all-submit-btn .all-button").focus();
+    });
+    $("#register .verification_code .last_otp").keyup(function(event) {
+        $('#register .all-submit-btn.otp_btn button').focus(); 
+        $('#register .verification_code .last_otp').blur();
+        if (event.which === 13) {
+            $("#register .all-submit-btn.otp_btn .all-button").click();
+        }
+    });
+    
+    $("#login .verification_code .last_otp").keyup(function(event) {
+        $('#login .all-submit-btn.otp_btn button').focus(); 
+        $('#login .verification_code .last_otp').blur();
+        if (event.which === 13) {
+                $('#login .all-submit-btn.otp_btn button').focus(); 
+                $("#login .all-submit-btn.otp_btn .all-button").click();
+        }
+    });
+
+    
+    $('body').on('keyup', '.mob-number', function () {
+        var $input = $(this),
+            value = $input.val(),
+            length = value.length,
+            inputCharacter = parseInt(value.slice(-1));
+        if (!((length > 0 && inputCharacter >= 0 && inputCharacter <= 10) || (length === 1 && inputCharacter >= 7 && inputCharacter <= 10)) && value == 43) {
+            $input.val(value.substring(0, length - 1));                
+        }
+    });
+    $(".mob-number").keypress(function (e) {
+        //if the letter is not digit then display error and don't type anything
+        if (e.which != 8 && e.which != 0 && e.which != 43 && (e.which < 48 || e.which > 57)) {
+            //display error message
+            $("#errmsg").html("Number Only").show();
+            return false;
+        }
+    });
+    // otp_vadlidation
+    $(".otp_no").keypress(function (e) {
+        //if the letter is not digit then display error and don't type anything
+        if (e.which != 8 && e.which != 0 && (e.which < 48 || e.which > 57)) {
+            //display error message
+            $("#errmsg").html("Number Only").show();
+            return false;
+        }
+    });
+});
+function getOTP(){
+var otp_numbers = $('.otp_no');
+var otp = '';
+$.each(otp_numbers, function(k,v){
+    otp += $(v).val();
+});
+
+$('[name="otp"]').val(otp);
+}
+
+// login and register modal
+$(document).ready(function(){
+    $('.login-account a').click(function(){
+        $('.register-modal').show();
+        $('.login-modal').hide();
+    });
+    $('.register-account a').click(function(){
+        $('.login-modal').show();
+        $('.register-modal').hide();
+    });
+    $('.signup-free-upbtn button').click(function(){
+        $('.register-modal').show();
+        $('.login-modal').hide();
+    });
+    $('.header-login button.all-button').click(function(){
+        $('.login-modal').show();
+        $('.register-modal').hide();
+    });
+    // show more tag
+    $(".show-more").click(function () {
+        if($(".text").hasClass("show-more-height")) {
+            $(this).text("Close");
+            $(this).append('<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" viewBox="0 0 25 25" fill="none"><path opacity="0.4" d="M12.5957 22.4507C18.1186 22.4507 22.5957 17.9735 22.5957 12.4507C22.5957 6.92784 18.1186 2.45068 12.5957 2.45068C7.07286 2.45068 2.5957 6.92784 2.5957 12.4507C2.5957 17.9735 7.07286 22.4507 12.5957 22.4507Z" fill="#292D32"/><path d="M13.6551 12.4505L15.9551 10.1505C16.2451 9.86055 16.2451 9.38055 15.9551 9.09055C15.6651 8.80055 15.1851 8.80055 14.8951 9.09055L12.5951 11.3905L10.2951 9.09055C10.0051 8.80055 9.52508 8.80055 9.23508 9.09055C8.94508 9.38055 8.94508 9.86055 9.23508 10.1505L11.5351 12.4505L9.23508 14.7505C8.94508 15.0405 8.94508 15.5205 9.23508 15.8105C9.38508 15.9605 9.57508 16.0305 9.76508 16.0305C9.95508 16.0305 10.1451 15.9605 10.2951 15.8105L12.5951 13.5105L14.8951 15.8105C15.0451 15.9605 15.2351 16.0305 15.4251 16.0305C15.6151 16.0305 15.8051 15.9605 15.9551 15.8105C16.2451 15.5205 16.2451 15.0405 15.9551 14.7505L13.6551 12.4505Z" fill="#292D32"/></svg>');
+            $('.show-more-height-none').hide();
+            $('.show-more-height-block').css('display', 'flex');
+        } else {
+            $(this).text("More");
+            $('.show-more-height-none').css('display', 'flex');
+            $('.show-more-height-block').hide();
+        }
+        $(".text").toggleClass("show-more-height");
+    });
+    // show all collection
+
+    $('.wed-main-title .all-single-border.see-all').hide();
+    $(".global-top-box").click(function () {
+        $('.wed-main-title .all-single-border.see-all').show();
+        $('.category-tab-main').show();
+        $('.playlist-main-single').show();
+        $('.all-show-list .global-top-main .wed-main-title h2').removeClass('see-all-close');
+        $(".all-text").addClass("show-all-height");
+    });
+
+    $(".see-all").click(function () {
+        if($(".all-text").hasClass("show-all-height")) {
+            $('.wed-main-title .all-single-border.see-all').hide();
+            $('.category-tab-main').hide();
+            $('.playlist-main-single').hide();
+            $('.all-show-list .global-top-main .wed-main-title h2').addClass('see-all-close');
+        }
+        $(".all-text").toggleClass("show-all-height");
+    });
+    $('.category-close').click(function(){
+        $('.wed-main-title .all-single-border.see-all').hide();
+        $('.category-tab-main').hide();
+        $('.playlist-main-single').hide();
+        $('.global-top-main .show-all-height').removeClass('show-all-height');
+        $('.all-show-list .global-top-main .wed-main-title h2').addClass('see-all-close');
+        $('#data-category-id').attr('data-category-id', '');
+        $('.table-scroll').html('');
+    })
+
+    // search
+    var KEYCODE_ESCAPE = 27;
+    var KEYCODE_UP = 38;
+    var KEYCODE_DOWN = 40;
+    var ENTER_CODE = 13;
+    // $('#search-tab').addClass('d-none');
+    // $('.search').addClass('d-none');
+
+    var checkInput = (e) => {
+        const content = $(".header-search-input").val().trim();
+        $('.header-search-dropdown').prop('hidden', content === '');
+    };
+    $(document).on('keyup', '.header-search-input', checkInput);
+
+    var checkInput = (e) => {
+        const content = $(".mobile-header-main .header-search-input").val().trim();
+        $('.mobile-header-main .header-search-dropdown').prop('hidden', content === '');
+    };
+    $(document).on('keyup', '.mobile-header-main .header-search-input', checkInput);
+    $('.desktop-header-main .header-search-input').on('keyup', function(e) {
+        if (e.keyCode === KEYCODE_DOWN) {
+            if ($('.header-search-dropdown.d-none').length > 0) {
+                $('.header-search-dropdown.d-none').removeClass('d-none');
+            } else {
+                $('.header-search-dropdown .list-group-item.header-search-dropdown-list:first-child').focus();
+            }
+        } else if (e.keyCode === KEYCODE_UP) {
+            if ($('.header-search-dropdown.d-none').length > 0) {
+                $('.header-search-dropdown.d-none').removeClass('d-none');
+            } else {
+                $('.header-search-dropdown .header-search-dropdown-list:last-child').focus();
+            }
+        } else if (e.keyCode === KEYCODE_ESCAPE) {
+            $('.header-search-dropdown').addClass('d-none');
+        } else if (e.keyCode === ENTER_CODE) {
+            e.preventDefault();
+        } else {
+            $('#desktop-search-form').submit();
+            $('.header-search-dropdown').removeClass('d-none');
+        }
+    });
+    $('.mobile-header-main .header-search-input').on('keyup', function(e) {
+        if (e.keyCode === KEYCODE_DOWN) {
+            if ($('.header-search-dropdown.d-none').length > 0) {
+                $('.header-search-dropdown.d-none').removeClass('d-none');
+            } else {
+                $('.header-search-dropdown .list-group-item.header-search-dropdown-list:first-child').focus();
+            }
+        } else if (e.keyCode === KEYCODE_UP) {
+            if ($('.header-search-dropdown.d-none').length > 0) {
+                $('.header-search-dropdown.d-none').removeClass('d-none');
+            } else {
+                $('.header-search-dropdown .header-search-dropdown-list:last-child').focus();
+            }
+        } else if (e.keyCode === KEYCODE_ESCAPE) {
+            $('.header-search-dropdown').addClass('d-none');
+        } else if (e.keyCode === ENTER_CODE) {
+            e.preventDefault();
+        } else {
+            $('#mobile-search-form').submit();
+            $('.header-search-dropdown').removeClass('d-none');
+        }
+    });
+    $('.header-search-dropdown').on('keydown', '.header-search-dropdown-list', function(e) {
+        if (e.keyCode === KEYCODE_DOWN) {
+            if ($(this).is(':last-child')) {
+                $(this).closest('.list-group').find('.header-search-dropdown-list:first-child').focus();
+            } else {
+                $(this).next().focus();
+            }
+        } else if (e.keyCode === KEYCODE_UP) {
+            if ($(this).is(':first-child')) {
+                $(this).closest('.list-group').find('.header-search-dropdown-list:last-child').focus();
+            } else {
+                $(this).prev().focus();
+            }
+        } else if (e.keyCode === KEYCODE_ESCAPE) {
+            $('.header-search-dropdown').addClass('d-none');
+            $('.header-search-input').focus();
+        } else {
+            $('.header-search-input').focus();
+        }
+    }).on('focus', '.header-search-dropdown-list', function() {
+        $(this).addClass('active').attr('aria-selected', 'true');
+    }).on('blur', '.header-search-dropdown-list', function() {
+        $(this).removeClass('active').attr('aria-selected', 'false');
+    });
+    // sidebar menu responsive
+    $("#menu-btn").click(function(){
+        $("#sidebar").addClass("active-nav");
+        $("body").addClass('menu-active');
+    }); 
+    $(".sidebar-close").click(function(){
+        $("#sidebar").removeClass("active-nav");
+        $("body").removeClass('menu-active');
+    }); 
+    // choose change image
+
+    $('#imageInput').on('change', function() {
+        $input = $(this);
+        if($input.val().length > 0) {
+            fileReader = new FileReader();
+            fileReader.onload = function (data) {
+            $('.image-preview').attr('src', data.target.result);
+            }
+            fileReader.readAsDataURL($input.prop('files')[0]);
+        }
+    });
+
+    $('.header-category .header-select-category ul li .all-button svg').click(function(){
+        var header_close_cate = $(this).parent().parent().attr('data-attr');
+        $(this).parent().parent().hide();
+        $('.serch-list-group-item.header-all-category li').each(function(){
+            var search_all_cate = $(this).attr('data-attr');
+            if(header_close_cate == search_all_cate){
+                $(this).removeClass('cate-active');
+            }
+        });   
+        $('.header-category .header-all-category li').each(function(){
+            var header_all_cate = $(this).attr('data-attr');
+            if(header_close_cate == header_all_cate){
+                $(this).removeClass('cate-active');
+            }
+        });
+    }); 
+    
+    // favourite remove
+    $('#favourite-songs-table .trending-recent-favorite button').click(function(){
+        $(this).closest('tr').hide();
+        location.reload();
+    });
+    // autofocus modal input
+    if($(window).width() >= 767){
+        $('.login-modal.all-modal #email').focus();
+        $('.register-modal.all-modal .name.all-input').focus();
+    }
+    
+
+    if($(".sticky-box").length){
+        var div_top = $('.sticky-box').offset().top;
+        $(window).scroll(function() {
+            // var header_top = $('header').innerHeight();
+            var window_top = $(window).scrollTop() - 0;
+            if (window_top > div_top) {
+                if (!$('.sticky-box').is('.stick-active')) {
+                    $('.sticky-box').addClass('stick-active');
+                }
+            } else {
+                $('.sticky-box').removeClass('stick-active');
+            }
+        });
+    }
+    $('.global-top-main-all').click(function(){
+        if($(".sticky-box").length){
+            var div_top = $('.sticky-box').offset().top;
+            $(window).scroll(function() {
+                var window_top = $(window).scrollTop() - 0;
+                if (window_top > div_top) {
+                    if (!$('.sticky-box').is('.stick-active')) {
+                        $('.sticky-box').addClass('stick-active');
+                    }
+                } else {
+                    $('.sticky-box').removeClass('stick-active');
+                }
+            });
+        }
+    }); 
+});

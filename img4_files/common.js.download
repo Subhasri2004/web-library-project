@@ -1,0 +1,717 @@
+var is_bucket_edit = 0;
+var xhr = {};
+var pagination_ajax = [];
+
+alerts = {
+    alert: function (type, message, html = null) {
+        Swal.fire({
+            text: message,
+            icon: type,
+            html: html,
+            buttonsStyling: false,
+            customClass: {
+                confirmButton: "btn btn-primary",
+            },
+        });
+    },
+    confirm: function (message, route, method = "DELETE") {
+        Swal.fire({
+            title: "Are you sure?",
+            text: message,
+            icon: "warning",
+            showCancelButton: !0,
+            confirmButtonText: "Yes, delete it!",
+            cancelButtonText: "No, cancel it!",
+            confirmButtonClass: "btn btn-success mt-2 btn-confirmed",
+            cancelButtonClass: "btn btn-danger ms-2 mt-2",
+            buttonsStyling: !1,
+
+            preConfirm: () => {
+                $btn = $(".btn-confirmed");
+                $btn_html = $btn.html();
+
+                $.ajax({
+                    url: route,
+                    method: method,
+                    data: {},
+                    dataType: "json",
+                    headers: {
+                        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr(
+                            "content"
+                        ),
+                    },
+                    beforeSend: function () {
+                        $btn.prop("disabled", true);
+                        $btn.html(
+                            '<span class="indicator-label">Please wait... <span class="spinner-border spinner-border-sm align-middle ms-2"></span></span>'
+                        );
+                    },
+                    success: function (json) {
+                        if (json.redirect) {
+                            location.href = json.redirect;
+                        }
+                    },
+                    complete: function () {
+                        $btn.prop("disabled", false);
+                        $btn.html($btn_html);
+                    },
+                    error: function (response) {
+                        Swal.close();
+                        alerts.alert("error", response.responseJSON.message);
+                    },
+                });
+
+                return false;
+            },
+        });
+    },
+    redirect: function (type, message, route) {
+        Swal.fire({
+            text: message,
+            icon: type,
+            showCancelButton: !0,
+            confirmButtonText: "Share on Whatsapp",
+            cancelButtonText: "No, cancel it!",
+            confirmButtonClass: "btn btn-success mt-2 btn-confirmed",
+            cancelButtonClass: "btn btn-danger ms-2 mt-2",
+            buttonsStyling: !1,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.open(route);
+            }
+        });
+    },
+    repeat_songs: function (route, html) {
+        Swal.fire({
+            html: html,
+            icon: "warning",
+            showCancelButton: !0,
+            confirmButtonText: "Yes, add it!",
+            cancelButtonText: "No, cancel it!",
+            confirmButtonClass: "btn btn-success mt-2 btn-confirmed",
+            cancelButtonClass: "btn btn-danger ms-2 mt-2",
+            buttonsStyling: !1,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                var songs = $(
+                    '.songsearch-tabel tbody input[type="checkbox"]:checked'
+                )
+                    .map(function () {
+                        return $(this).val();
+                    })
+                    .get();
+                var client_id = $("#client_id").val();
+                var event = $("#event").val();
+                var sub_client = $("#sub_client").val();
+                $.ajax({
+                    url: route,
+                    type: "POST",
+                    data: {
+                        songs: songs,
+                        client_id: client_id,
+                        event: event,
+                        sub_client: sub_client,
+                        skip_repeat: true,
+                    },
+                    headers: {
+                        "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr(
+                            "content"
+                        ),
+                    },
+                    beforeSend: function () {
+                        $("#add_to_bucket").prop("disabled", true);
+                    },
+                    complete: function () {
+                        $("#add_to_bucket").prop("disabled", false);
+                    },
+                    success: function (json) {
+                        if (json.success) {
+                            $("#bucket_preview").html(json.html);
+                            $("#bucket_preview_btn").trigger("click");
+                            if (json.message) {
+                                alerts.alert("success", json.message);
+                            }
+                            if (json.repeat_songs) {
+                                if (json.repeat_warning_html) {
+                                    alerts.repeat_songs(
+                                        form,
+                                        "",
+                                        json.warning_html
+                                    );
+                                }
+                            }
+                        } else {
+                            alerts.alert("error", json.message);
+                        }
+                    },
+                    error: function (json) {
+                        alerts.alert("error", "Something went wrong");
+                    },
+                });
+            }
+        });
+    },
+    copy_link: function (type, message, link) {
+        Swal.fire({
+            text: message,
+            icon: type,
+            showCancelButton: !0,
+            confirmButtonText: "Copy Link",
+            cancelButtonText: "No, cancel it!",
+            confirmButtonClass: "btn btn-success mt-2 btn-confirmed",
+            cancelButtonClass: "btn btn-danger ms-2 mt-2",
+            buttonsStyling: !1,
+        }).then((result) => {
+            if (result.isConfirmed) {
+                navigator.clipboard.writeText(link);
+            }
+        });
+    },
+};
+
+function toast(type, message) {
+    if (type == "success") {
+        $("#success_toast").removeClass("d-none");
+        $("#success_toast_message").html(message);
+        toasthtml = $("#success_toast");
+    } else {
+        $("#error_toast").removeClass("d-none");
+        $("#error_toast_message").html(message);
+        toasthtml = $("#error_toast");
+    }
+
+    new bootstrap.Toast(toasthtml).show();
+}
+
+function json_error_handling($form, $response_json) {
+    if ($response_json.errors) {
+        $.each($response_json.errors, function (key, item) {
+            if ($('[name="' + key + '"]').parent(".input-group").length) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .closest(".input-group")
+                    .after('<div class="text-danger">' + item[0] + "</div>");
+            } else if (
+                $('[name="' + key + '"]').parent(".input-field").length
+            ) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .closest(".input-field")
+                    .after('<div class="text-danger">' + item[0] + "</div>");
+            } else if (
+                $('[name="' + key + '"][type="file"]').closest(".image-input")
+                    .length
+            ) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .closest(".image-input")
+                    .after('<div class="text-danger">' + item[0] + "</div>");
+            } else if ($('[name="' + key + '"].select2').length) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .parent()
+                    .append('<div class="text-danger">' + item[0] + "</div>");
+            } else if ($('[name="' + key + '[]"].select2').length) {
+                $form
+                    .find('[name="' + key + '[]"]')
+                    .parent()
+                    .append('<div class="text-danger">' + item[0] + "</div>");
+            } else if (
+                $('[name="' + key + '"][type="checkbox"]').length ||
+                $('[name="' + key + '"][type="radio"]').length
+            ) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .parent()
+                    .after('<div class="text-danger">' + item[0] + "</div>");
+            } else if ($('textarea[name="' + key + '"]').length) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .parent()
+                    .append('<div class="text-danger">' + item[0] + "</div>");
+
+            } else if ($('textarea[name="' + key + '"]').length) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .parent()
+                    .append('<div class="text-danger">' + item[0] + "</div>");
+            } 
+            else if ($('[name="' + key + '"]').closest('.iti--allow-dropdown').length) {
+                $form
+                    .find('[name="' + key + '"]')
+                    .closest('.iti--allow-dropdown')
+                    .after('<div class="text-danger">' + item[0] + "</div>");
+            } else {
+                $form
+                    .find('[name="' + key + '"]')
+                    .after('<div class="text-danger">' + item[0] + "</div>");
+            }
+        });
+    } else if ($response_json.message) {
+        alerts.alert("error", $response_json.message);
+    }
+}
+
+function ajax_request(e, form, btn = false) {
+    e.preventDefault();
+    $form = $(form);
+
+    var ajax_request_url = $form.attr("action");
+    var slug = ajax_request_url.replace(origin + '/', '').replace('/','-');
+    if(btn){
+        $btn = $(btn);
+    } else{
+
+        $btn = $(e.submitter);
+    }
+    $btn_action = $($btn).attr('action');
+    $btn_method = $($btn).attr('method');
+    $btn_html = $btn.html();
+    $form.find(".alert").remove();
+    $form.find(".text-danger").remove();
+    $form.find(".text-success").remove();
+
+    if(typeof xhr[slug] !== 'undefined' && xhr[slug].status != 200){
+        xhr[slug].abort();
+    }
+
+    xhr[slug] = $.ajax({
+        url: $btn_action ? $btn_action : $form.attr("action"),
+        method: $btn_method ? $btn_method : $form.attr("method"),
+        data: $form.serialize(),
+        dataType: "json",
+        headers: {
+            "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr(
+                "content"
+            ),
+        },
+        beforeSend: function () {
+            $btn.prop("disabled", true);
+            $btn.html(
+                '<span class="loading-svg"><?xml version="1.0" encoding="utf-8"?><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="margin: auto; background: none; display: block; shape-rendering: auto;" width="30px" height="30px" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid"><path d="M10 50A40 40 0 0 0 90 50A40 46 0 0 1 10 50" fill="#6d56df" stroke="none"><animateTransform attributeName="transform" type="rotate" dur="1s" repeatCount="indefinite" keyTimes="0;1" values="0 50 53;360 50 53"></animateTransform></path></svg></span>'
+            );
+        },
+        success: function (json) {
+            if (json.success) {
+                if (typeof json.html !== 'undefined') {
+                    $("#" + json.selector).html(json.html);
+                } else if (json.redirect) {
+                    if(json.target){
+                        window.open(json.redirect, json.target);
+                    }else{
+                        location.href = json.redirect;
+                    }
+                } else if (json.append) {
+                    $("#" + json.selector).append(json.append);
+                } else if (json.prepend) {
+                    $("#" + json.selector).prepend(json.prepend);
+                }
+
+                if(json.page_count){
+                    $("#page_count").val(json.page_count);
+                }
+
+                if(json.openLanguageModal){
+                    localStorage.setItem('openModal', '#languge_modal');
+                    // $('#languge_modal').modal('show');
+                    // $('.languge-modal').modal('show');
+                }
+
+                if (json.data_table) {
+                    $("." + json.data_table)
+                        .dataTable()
+                        .fnDestroy();
+                    $("." + json.data_table).dataTable({
+                        searching: true,
+                        paging: true,
+                        info: false,
+                        ordering: true,
+                        scrollX: true,
+                        language: {
+                            search: "_INPUT_",
+                            searchPlaceholder: "Search here...",
+                        },
+                        lengthMenu: [
+                            [10, 25, 50, -1],
+                            [10, 25, 50, "All"],
+                        ],
+                        aoColumnDefs: [
+                            {
+                                bSortable: false,
+                                aTargets: [0, -1],
+                            },
+                        ],
+                        aaSorting: [],
+                        dom: '<"top"i>rt<"bottom"flp><"clear">',
+                    });
+                }
+
+                if (json.whatsapp_link) {
+                    alerts.redirect(
+                        "success",
+                        json.whatsapp_message,
+                        json.whatsapp_link
+                    );
+                }
+
+                if (json.copy_link) {
+                    alerts.copy_link('success', json.copy_link_message, json.copy_link);
+                }
+
+                if (json.clear_form) {
+                    is_bucket_edit = 1;
+                }
+
+                if (json.trigger) {
+                    $(json.trigger).trigger("click");
+                }
+
+                if (json.message) {
+                    if(json.target){
+                        $(json.target).next('.text-success').remove();
+                        $(json.target).before('<div id="success" class="text-success mb-3">'+json.message+'</div>');
+                        setTimeout(function(){
+                            $form.find('[id="' + "success" + '"]').fadeOut('fast');
+                        }, 5000);
+                    }else{
+                        alerts.alert("success", json.message);
+                    }
+                }
+
+                if (json.error) {
+                    alerts.alert("error", json.error);
+                    if (json.error_html) {
+                        alerts.alert("error", json.error, json.error_html);
+                    }
+                }
+
+                if (json.form_reset) {
+                    $form.trigger("reset");
+                }
+
+                if (json.hideViewMoreButton) {
+                    $(".btn-view-more").hide();
+                }
+
+                if (json.verify) {
+                    $form.attr('action', json.verify_action);
+                    $form.find('[data-show-verify]').hide();
+                    $form.find('[data-show-verify="true"]').show();
+                    $(json.resend_otp_btn).addClass('d-none');
+                    $(json.resend_count).removeClass('d-none');
+                    setCountDown(60);
+                    countdown();
+                    // $form.find('.verification_code input').addClass('input-focus');
+                    $form.find('.verification_code input:nth-child(1)').trigger('focus'); 
+                }
+                
+                if (json.favourite) {
+                    $('[data-song-id="'+ json.identfier +'"]').toggleClass('active');
+                }
+                // if (json.favourite) {
+                //     setTimeout(function(){
+                //         $('.fa-star[data-song-id="'+ json.identfier +'"]').toggleClass('text-warning');
+                //     }, 100);
+                // }
+
+                if(json.pagination){
+                    $('#pagination').html(json.pagination);
+                    pagination_ajax = [];
+                }
+                if(json.stop_pagination){
+                    $('#pagination').attr('data-pagination', false);
+                }
+                if(json.favouriteCountSelector){
+                    $("#" + json.favouriteCountSelector).html(json.favouriteCount);   
+                }
+
+                if(json.errors){
+                    json_error_handling($form, json);
+                }
+            } else {
+                alerts.alert("error", json.message);
+            }
+        },
+        complete: function () {
+            $btn.prop("disabled", false);
+            $btn.html($btn_html);
+        },
+        error: function (response) {
+            json_error_handling($form, response.responseJSON);
+            $btn.prop("disabled", false);
+            $btn.html($btn_html);
+        },
+    });
+}
+
+function multipart_ajax_request(e, form) {
+    e.preventDefault();
+    $form = $(form);
+    $form_id = $form.attr("id");
+    $btn = $form.find('[type="submit"]');
+    $btn_html = $btn.html();
+    $form.find(".alert").remove();
+    $form.find(".text-danger").remove();
+    var formData = new FormData(form);
+
+    $.ajax({
+        url: $form.attr("action"),
+        method: $form.attr("method"),
+        data: formData,
+        dataType: "json",
+        cache: false,
+        contentType: false,
+        processData: false,
+        headers: {
+            "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+        },
+        beforeSend: function () {
+            $btn.prop("disabled", true);
+            $btn.html(
+                '<i class="bx bx-loader bx-spin font-size-16 align-middle"></i> Loading....'
+            );
+        },
+        success: function (json) {
+            if (json.redirect) {
+                location.href = json.redirect;
+            }
+        },
+        complete: function () {
+            $btn.prop("disabled", false);
+            $btn.html($btn_html);
+        },
+        error: function (response) {
+            json_error_handling($form, response.responseJSON);
+            $btn.prop("disabled", false);
+            $btn.html($btn_html);
+        },
+    });
+}
+
+function ajax_notification(route, data) {
+    $.ajax({
+        url: route,
+        method: "POST",
+        data: {
+            client_name: data.client_name,
+            message: data.message,
+            url: data.url,
+            time: data.time,
+            user_id: data.user_id,
+        },
+        headers: {
+            "X-CSRF-TOKEN": $('meta[name="csrf-token"]').attr("content"),
+        },
+        dataType: "json",
+        success: function (json) {
+            if (json.success) {
+                if (json.html) {
+                    $(json.selector).prepend(json.html);
+                    $("#no_data").remove();
+                    if ($("#bell_icon").hasClass("bell-active") != true) {
+                        $("#bell_icon").addClass("bell-active");
+                    }
+                }
+
+                if (Notification.permission !== "granted") {
+                    Notification.requestPermission();
+                } else {
+                    var notification = new Notification(json.client_name, {
+                        body: json.message,
+                    });
+
+                    /* Remove the notification from Notification Center when clicked.*/
+                    notification.onclick = function () {
+                        window.open(json.url);
+                    };
+
+                    /* Callback function when the notification is closed. */
+                    notification.onclose = function () {
+                        console.log("Notification closed");
+                    };
+                }
+            } else {
+                alerts.alert("error", json.message);
+            }
+        },
+        error: function (response) {
+            alerts.alert("error", response.responseJSON.message);
+        },
+    });
+}
+
+$(document).ready(function(){
+    var mobile_country = $('.iti__selected-dial-code').text();      
+    if (mobile_country.startsWith("+")) {
+        var newText = mobile_country.slice(1);
+        $('.mobile-country').attr('value', newText);
+    }
+
+    $(".mob-number").on("countrychange", function(e) {
+        var mobile_country = $('.iti__selected-dial-code').text();
+        if (mobile_country.startsWith("+")) {
+            var newText = mobile_country.slice(1);
+            $('.mobile-country').attr('value', newText);
+        }
+    });
+});
+
+
+function search_ajax_request(e, form) {
+    e.preventDefault();
+    $form = $(form);
+
+    var ajax_request_url = $form.attr("action");
+    var slug = ajax_request_url.replace(origin + '/', '').replace('/','-');
+
+    $btn = $(e.submitter);
+    $btn_action = $(e.submitter).attr('action');
+    $btn_html = $btn.html();
+    $form.find(".alert").remove();
+    $form.find(".text-danger").remove();
+    $form.find(".text-success").remove();
+
+    if(typeof xhr[slug] !== 'undefined' && xhr[slug].status != 200){
+        xhr[slug].abort();
+    }
+
+    xhr[slug] = $.ajax({
+        url: $btn_action ? $btn_action : $form.attr("action"),
+        method: $form.attr("method"),
+        data: $form.serialize(),
+        dataType: "json",
+        beforeSend: function () {
+            $btn.prop("disabled", true);
+            $btn.html(
+                '<span><i class="fa-solid fa-spinner"></i></span>'
+            );
+            if($form.attr('id') != 'desktop-search-form' && $form.attr('id') != 'mobile-search-form'){
+                $('body').addClass('table-loader-background');
+            }
+                $('body').append('<div class="all-table-loader"><div class="table-loader-svg"><div class="signup-btn-lsvg signup-btn-lsvg-1 table-loader"></div><div class="signup-btn-lsvg signup-btn-lsvg-2 table-loader"></div><div class="signup-btn-lsvg signup-btn-lsvg-3 table-loader"></div></div></div>');
+                $(".table-scroll").closest('.table-responsive').addClass('scroll-active');
+            // $(".table-scroll").html('<tr class="all-table-loader"><td><div class="signup-btn-lsvg signup-btn-lsvg-1 table-loader"></div><div class="signup-btn-lsvg signup-btn-lsvg-2 table-loader"></div><div class="signup-btn-lsvg signup-btn-lsvg-3 table-loader"></div></td></tr>');
+            // $(".table-scroll").html('<span class="loader"><span class="loader-inner"></span></span>');
+        },
+        success: function (json) {
+            if (json.success) {
+                if(json.tagSelector){
+                    $("." + json.tagSelector).parent().show();
+                    $("." + json.tagSelector).html(json.tagHtml);  
+                }
+                // if(json.tagSearchSelector){
+                //     $("." + json.tagSearchSelector).parent().show();
+                //     $("." + json.tagSearchSelector).html(json.tagHtml);  
+                // }
+                if(json.searchTag){
+                    var searchList = $(document).find(".header-search-dropdown-list");
+                    searchList.html('');
+                    if(json.tags){
+
+                        // var tag_array = [];
+                        // if(json.tag_ids){
+                        //     tag_array.push(json.tag_ids);
+                        //     console.log(tag_array);
+                        // }
+
+                        var tag_array = [];
+                        $('.header-selected-tag li').each(function(){
+                            var search_all_cate = $(this).attr('data-attr');
+                            tag_array.push(search_all_cate);
+                            // console.log(search_all_cate);
+
+                        });   
+                        // console.log(tag_array);
+
+
+                        $.each(json.tags, function (key, item) {
+                            // searchList.append('<li id="'+ item.id + '" class="header-cate-all" data-attr="'+ item.name + '" onclick="makeActiveTag(this)"><input type="checkbox" name="tag[]" value="' + item.id +'"/><label class="all-button all-single-border header-button">' + item.name +'</label></li>');
+                            // console.log('tag_array -> ' + tag_array);
+                            if(tag_array.includes(item.id)){
+                                searchList.append('<li id="'+ item.id + '" class="header-cate-all" data-attr="'+ item.name + '" onclick="makeActiveTag(this)"><input type="checkbox" name="tag[]" value="' + item.id +'" checked/><label class="all-button all-single-border header-button">' + item.name +'</label></li>');
+                            } else {
+                                searchList.append('<li id="'+ item.id + '" class="header-cate-all" data-attr="'+ item.name + '" onclick="makeActiveTag(this)"><input type="checkbox" name="tag[]" value="' + item.id +'"/><label class="all-button all-single-border header-button">' + item.name +'</label></li>');
+                            }
+                        });
+                    } 
+                    if(json.removeActiveClass){
+                        $('.header-cate-all').removeClass('cate-active');
+                    }
+                }
+                
+                if(json.stop_pagination){
+                    $('#pagination').attr('data-pagination', false);
+                }
+
+                if(json.hideSearchTab){
+                    $('.header-cate-all').removeClass('cate-active');
+                    $('#search-tab').addClass('d-none');
+                    $('#search').addClass('d-none');
+                    $('#recently-added').trigger('click');
+                    // $('#trending-tab').trigger('click');
+                }
+                if(json.searchSelector || json.trendingSelector || json.recentlyAddedSelector || json.recentlySelector || json.categorySelector || json.playlistSelector){
+                    $('.table-scroll').html('');
+                    if(json.searchSelector){
+                        // $('.header-search-dropdown').removeClass('d-none');
+                        $('.trending-recent .nav-tabs .nav-link#search-tab').removeClass('d-none');
+                        $('.trending-recent-main .tab-pane#search').removeClass('d-none');
+                        $('.trending-recent .nav-tabs .nav-link').removeClass('active');
+                        $('.trending-recent .nav-tabs .nav-link#search-tab').addClass('active');
+                        $('.trending-recent-main .tab-pane').removeClass('active show');
+                        $('.trending-recent-main .tab-pane#search').addClass('active show');
+                        $("#" + json.searchSelector).append(json.searchHtml);   
+                    }
+                    if(json.trendingSelector){
+                        $("#" + json.trendingSelector).append(json.trendingHtml);   
+                    }
+                    if(json.recentlyAddedSelector){
+                        $("#" + json.recentlyAddedSelector).append(json.recentlyAddedHtml);   
+                    }   
+                    if(json.recentlySelector){
+                        $("#" + json.recentlySelector).append(json.recentlyHtml);   
+                    }   
+                    if(json.categorySelector){
+                        $("#" + json.categorySelector).append(json.categoryHtml);   
+                    }
+                    if(json.categoryNameSelector){
+                        $("#" + json.categoryNameSelector).html(json.categoryName);   
+                    }
+                    if(json.categoryIdSelector){
+                        $("#" + json.categoryIdSelector).attr(json.categoryIdSelector, json.categoryId);   
+                    }
+                    if(json.playlistSelector){
+                        $("#" + json.playlistSelector).append(json.playlistHtml);   
+                    }
+                    if(json.playlistNameSelector){
+                        $("#" + json.playlistNameSelector).html(json.playlistName);   
+                    }
+                    if(json.playlistIdSelector){
+                        $("#" + json.playlistIdSelector).attr(json.playlistIdSelector, json.playlistId);   
+                    }
+                    if(json.selectedplaylistId){
+                        $("#" + json.selectedplaylistId).html(json.selectedplaylistHtml);   
+                    }
+                } 
+                if(json.redirect){
+                    location.href = json.redirect;
+                }
+            } else {
+                alerts.alert("error", json.message);
+            }
+        },
+        complete: function () {
+            $btn.prop("disabled", false);
+            $btn.html($btn_html);
+            $('body').removeClass('table-loader-background');
+            $('.all-table-loader').remove();
+        },
+        error: function (response) {
+            json_error_handling($form, response);
+            // json_error_handling($form, response.responseJSON);
+            $btn.prop("disabled", false);
+            $btn.html($btn_html);
+        },
+    });
+}
+
